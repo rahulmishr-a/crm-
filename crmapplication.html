@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CRM Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      background: linear-gradient(135deg, #74ebd5, #ACB6E5);
+      font-family: 'Segoe UI', sans-serif;
+      transition: background 0.4s ease;
+    }
+    body.dark-mode {
+      background: linear-gradient(135deg, #232526, #414345);
+      color: white;
+    }
+    .dark-toggle {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.1);
+      border: none;
+      border-radius: 50px;
+      font-size: 1.2rem;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+    }
+    .dark-toggle:hover {
+      background: rgba(0,0,0,0.2);
+    }
+    .login-card, .dashboard {
+      display: none;
+    }
+    .active {
+      display: block !important;
+    }
+    .login-card {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      color: #000;
+      margin: auto;
+      margin-top: 5vh;
+    }
+    .dark-mode .login-card {
+      background: rgba(0, 0, 0, 0.4);
+      color: white;
+    }
+    .dashboard {
+      padding: 2rem;
+    }
+    .lead-list li {
+      margin-bottom: 10px;
+    }
+    .btn-logout {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <button class="dark-toggle" onclick="toggleDarkMode()">🌙</button>
+
+  <!-- Login Section -->
+  <div id="loginSection" class="login-card active shadow-lg">
+    <h2 class="text-center mb-4">Welcome Back 👋</h2>
+    <input type="email" id="loginEmail" class="form-control mb-3" placeholder="Email Address" />
+    <input type="password" id="loginPassword" class="form-control mb-3" placeholder="Password" />
+    <select id="loginRole" class="form-select mb-4" onchange="fillCredentials()">
+      <option value="" disabled selected>Select Role</option>
+      <option value="admin">Admin</option>
+      <option value="telecaller">Telecaller</option>
+    </select>
+    <button class="btn btn-primary w-100 mb-3" onclick="handleLogin()">Login</button>
+    <div class="form-text text-center">Don't have an account? <a href="#">Sign up</a></div>
+  </div>
+
+  <!-- Admin Dashboard -->
+  <div id="adminDashboard" class="dashboard container">
+    <button class="btn btn-secondary btn-logout" onclick="logout()">Logout</button>
+    <h2>Admin Dashboard 🧑‍💼</h2>
+    <div class="row mt-4">
+      <div class="col-md-4">
+        <div class="card text-center p-3 shadow-sm" onclick="showAllLeadsAdmin()">
+          <h4>Total Leads</h4>
+          <p id="adminTotalLeads">0</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card text-center p-3 shadow-sm" onclick="showTelecallers()">
+          <h4>Telecallers Active</h4>
+          <p id="adminTelecallerCount">0</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card text-center p-3 shadow-sm" onclick="showActivities()">
+          <h4>Recent Activity</h4>
+          <p>Click to View</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-5">
+      <h4>Add Lead</h4>
+      <input type="text" id="adminLeadName" class="form-control mb-2" placeholder="Lead Name" />
+      <input type="text" id="adminLeadContact" class="form-control mb-2" placeholder="Contact Number" />
+      <button class="btn btn-success" onclick="addLeadFromAdmin()">Add Lead</button>
+    </div>
+
+    <div class="mt-5">
+      <h4>Manage Telecallers</h4>
+      <input type="text" id="newTelecallerName" class="form-control mb-2" placeholder="Name" />
+      <input type="email" id="newTelecallerEmail" class="form-control mb-2" placeholder="Email" />
+      <button class="btn btn-info mb-2" onclick="addTelecaller()">Add Telecaller</button>
+      <ul class="list-group" id="telecallerList"></ul>
+    </div>
+  </div>
+
+  <!-- Telecaller Dashboard -->
+  <div id="telecallerDashboard" class="dashboard container">
+    <button class="btn btn-secondary btn-logout" onclick="logout()">Logout</button>
+    <h2>Telecaller Dashboard 📞</h2>
+    <div class="mt-4">
+      <h4>Add New Lead</h4>
+      <input type="text" id="leadName" class="form-control mb-2" placeholder="Lead Name" />
+      <input type="text" id="leadContact" class="form-control mb-2" placeholder="Contact Number" />
+      <button class="btn btn-success" onclick="addLead()">Add Lead</button>
+    </div>
+    <div class="mt-5">
+      <h4>All Leads</h4>
+      <ul class="list-group lead-list" id="leadList"></ul>
+    </div>
+  </div>
+
+  <script>
+    let leads = [];
+    let telecallers = [];
+    let activities = [];
+
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark-mode");
+      document.querySelector(".dark-toggle").textContent =
+        document.body.classList.contains("dark-mode") ? "☀️" : "🌙";
+    }
+
+    function fillCredentials() {
+      const role = document.getElementById("loginRole").value;
+      const emailInput = document.getElementById("loginEmail");
+      const passwordInput = document.getElementById("loginPassword");
+
+      if (role === "admin") {
+        emailInput.value = "admin@example.com";
+        passwordInput.value = "admin123";
+      } else if (role === "telecaller") {
+        emailInput.value = "telecaller@example.com";
+        passwordInput.value = "tele123";
+      }
+    }
+
+    function handleLogin() {
+      const role = document.getElementById("loginRole").value;
+      if (!role) return alert("Please select role!");
+
+      document.getElementById("loginSection").classList.remove("active");
+
+      if (role === "admin") {
+        document.getElementById("adminDashboard").classList.add("active");
+        updateAdminDashboard();
+      } else {
+        document.getElementById("telecallerDashboard").classList.add("active");
+        renderLeads();
+      }
+    }
+
+    function logout() {
+      document.querySelectorAll(".dashboard").forEach(d => d.classList.remove("active"));
+      document.getElementById("loginSection").classList.add("active");
+      document.getElementById("loginEmail").value = "";
+      document.getElementById("loginPassword").value = "";
+      document.getElementById("loginRole").value = "";
+    }
+
+    function addLead() {
+      const name = document.getElementById("leadName").value.trim();
+      const contact = document.getElementById("leadContact").value.trim();
+
+      if (!name || !contact || !/^\d{10}$/.test(contact)) {
+        alert("Enter valid name and 10-digit contact.");
+        return;
+      }
+
+      leads.push({ name, contact });
+      activities.push(`(Telecaller) Lead "${name}" added`);
+      document.getElementById("leadName").value = "";
+      document.getElementById("leadContact").value = "";
+      renderLeads();
+      updateAdminDashboard();
+    }
+
+    function renderLeads() {
+      const list = document.getElementById("leadList");
+      list.innerHTML = "";
+      leads.forEach((lead, index) => {
+        const li = document.createElement("li");
+        li.className = "list-group-item d-flex justify-content-between";
+        li.innerHTML = `${lead.name} - ${lead.contact} <button class="btn btn-sm btn-danger" onclick="deleteLead(${index})">Delete</button>`;
+        list.appendChild(li);
+      });
+    }
+
+    function deleteLead(index) {
+      activities.push(`Lead "${leads[index].name}" deleted`);
+      leads.splice(index, 1);
+      renderLeads();
+      updateAdminDashboard();
+    }
+
+    function updateAdminDashboard() {
+      document.getElementById("adminTotalLeads").textContent = leads.length;
+      document.getElementById("adminTelecallerCount").textContent = telecallers.length;
+      renderTelecallerList();
+    }
+
+    function addLeadFromAdmin() {
+      const name = document.getElementById("adminLeadName").value.trim();
+      const contact = document.getElementById("adminLeadContact").value.trim();
+
+      if (!name || !/^\d{10}$/.test(contact)) {
+        alert("Enter valid name and 10-digit contact.");
+        return;
+      }
+
+      leads.push({ name, contact });
+      activities.push(`(Admin) Lead "${name}" added`);
+      document.getElementById("adminLeadName").value = "";
+      document.getElementById("adminLeadContact").value = "";
+      updateAdminDashboard();
+    }
+
+    function addTelecaller() {
+      const name = document.getElementById("newTelecallerName").value.trim();
+      const email = document.getElementById("newTelecallerEmail").value.trim();
+
+      if (!name || !email) {
+        alert("Enter valid name and email.");
+        return;
+      }
+
+      telecallers.push({ name, email });
+      activities.push(`Telecaller "${name}" added`);
+      document.getElementById("newTelecallerName").value = "";
+      document.getElementById("newTelecallerEmail").value = "";
+      updateAdminDashboard();
+    }
+
+    function renderTelecallerList() {
+      const list = document.getElementById("telecallerList");
+      list.innerHTML = "";
+      telecallers.forEach((t, i) => {
+        const li = document.createElement("li");
+        li.className = "list-group-item d-flex justify-content-between align-items-center";
+        li.innerHTML = `${t.name} (${t.email}) <button class="btn btn-sm btn-danger" onclick="removeTelecaller(${i})">Remove</button>`;
+        list.appendChild(li);
+      });
+    }
+
+    function removeTelecaller(index) {
+      activities.push(`Telecaller "${telecallers[index].name}" removed`);
+      telecallers.splice(index, 1);
+      updateAdminDashboard();
+    }
+
+    function showAllLeadsAdmin() {
+      alert("Leads:\n" + leads.map(l => `${l.name} - ${l.contact}`).join("\n") || "No leads found.");
+    }
+
+    function showTelecallers() {
+      alert("Active Telecallers:\n" + telecallers.map(t => `${t.name} (${t.email})`).join("\n") || "No telecallers added.");
+    }
+
+    function showActivities() {
+      alert("Recent Activity:\n" + activities.slice(-10).join("\n") || "No activity yet.");
+    }
+  </script>
+</body>
+</html>
